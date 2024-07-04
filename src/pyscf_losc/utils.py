@@ -96,8 +96,8 @@ def print_orbital_energies(verbose_level, mf, losc_data, print_level=1,
                 l, f"Warning: spin={s} number of basis NOT equal to number of AOs."
             )
         for i, orbE in enumerate(dfa_eigs[s]):
-            if orbital_energy_unit != 'eV':
-                orb *= constants.hartree2ev
+            #if orbital_energy_unit != 'eV':
+            #    orb *= constants.hartree2ev
             if not window or (window[0] <= orbE <= window[1]):
                 local_print(
                     l, "{:<5d}  {:<8.5f} {:>14.6f}  {:>14.10f}"
@@ -127,7 +127,18 @@ def print_sym_matrix(mat, mol, line_limit=5):
         pyscf.lib.logger.info(mol, f'    {i}:')
         pyscf.lib.logger.info(mol, f' {mat[i][:i+1]}')
 
-    pass
+
+def calc_orbitalet_e(mo_energy, U):
+    sqrd_U = U **2
+    orbitalet_e = np.dot(sqrd_U, mo_energy)
+    return orbitalet_e
+
+
+def sort_orbitalets(orbitalet_e, lo_coeff):
+    idx = orbitalet_e.argsort()
+    orbitalet_e = orbitalet_e[idx]
+    lo_coeff = lo_coeff[:,idx]
+    return orbitalet_e, lo_coeff
 
 
 def form_occ(mf, occ={}):
@@ -206,9 +217,9 @@ def form_occ(mf, occ={}):
                 raise Exception(
                     "Orbital index should be int, 'homo', or 'lumo'."
                 )
-            if not 0 <= orb_i < nao:
+            if not 0 <= orb_i < mf.mo_coeff.shape[1]:
                 raise Exception(
-                    "Customized occpuation index is out-of-range."
+                    "Customized occupation index is out-of-range."
                 )
             # check if homo and homo idx appear at the same time.
             if orb_i == nelec[s] - 1:
@@ -250,7 +261,7 @@ def form_occ(mf, occ={}):
     return nocc, occ_idx, occ_val
 
 
-def form_df_matrix(mf, C_lo, df_basis='augccpvtzri'):
+def form_df_matrix(mf, C_lo, df_basis=None):
     """Build density fitting related matrices, df_pii, df_Vpq_inv
 
     Parameters
@@ -338,7 +349,7 @@ def generate_loscmf(mf, losc_data=None):
         C_lo = losc_data.get('C_lo', [])
         E_losc = [0]
 
-        def get_fock(self, h1e=None, s1e=None, vhf=None, dm=None, cycle=-1,
+        def get_fock(h1e=None, s1e=None, vhf=None, dm=None, cycle=-1,
                      diis=None, diis_start_cycle=None, 
                      level_shift_factor=None, damp_factor=None):
             ''' overwrite Fock matrix
@@ -382,7 +393,7 @@ def generate_loscmf(mf, losc_data=None):
                 E_losc[0] *= 2
             return F
 
-        def energy_tot(self, dm=None, h1e=None, vhf=None):
+        def energy_tot(dm=None, h1e=None, vhf=None):
             E_dfa = original_energy_tot()
             E_tot = E_dfa + E_losc[0]
             return E_tot
